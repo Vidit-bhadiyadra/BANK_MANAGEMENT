@@ -1,0 +1,220 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <fstream>
+
+class Account {
+public:
+    std::string accountNumber;
+    std::string accountHolder;
+    double balance;
+
+    Account(std::string accNum, std::string accHolder, double bal) {
+        accountNumber = accNum;
+        accountHolder = accHolder;
+        balance = bal;
+    }
+
+    std::string toString() const {
+        return accountNumber + "," + accountHolder + "," + std::to_string(balance);
+    }
+};
+
+class Bank {
+private:
+    std::vector<Account> accounts;
+    const std::string filename = "accounts.txt";
+
+    void loadAccounts() {
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "Error opening file for reading." << std::endl;
+            return;
+        }
+        std::string line;
+        while (std::getline(file, line)) {
+            size_t pos1 = line.find(',');
+            size_t pos2 = line.find(',', pos1 + 1);
+            if (pos1 == std::string::npos || pos2 == std::string::npos) continue; // Skip malformed lines
+            std::string accNum = line.substr(0, pos1);
+            std::string accHolder = line.substr(pos1 + 1, pos2 - pos1 - 1);
+            double bal = std::stod(line.substr(pos2 + 1));
+            accounts.emplace_back(accNum, accHolder, bal);
+        }
+        file.close();
+    }
+
+    void saveAccounts() {
+        std::ofstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "Error opening file for writing." << std::endl;
+            return;
+        }
+        for (const auto& account : accounts) {
+            file << account.toString() << std::endl;
+        }
+        file.close();
+    }
+
+public:
+    Bank() {
+        loadAccounts();
+    }
+
+    ~Bank() {
+        saveAccounts();
+    }
+
+    void createAccount(const std::string& accNum, const std::string& accHolder, double bal) {
+        Account newAccount(accNum, accHolder, bal);
+        accounts.push_back(newAccount);
+        std::cout << "Account created for " << accHolder << " with balance $" << bal << std::endl;
+    }
+
+    void deposit(const std::string& accNum, double amount) {
+        for (auto& account : accounts) {
+            if (account.accountNumber == accNum) {
+                account.balance += amount;
+                std::cout << "Deposited $" << amount << " to account " << accNum << std::endl;
+                return;
+            }
+        }
+        std::cout << "Account not found!" << std::endl;
+    }
+
+    void withdraw(const std::string& accNum, double amount) {
+        for (auto& account : accounts) {
+            if (account.accountNumber == accNum) {
+                if (account.balance >= amount) {
+                    account.balance -= amount;
+                    std::cout << "Withdrew $" << amount << " from account " << accNum << std::endl;
+                } else {
+                    std::cout << "Insufficient funds!" << std::endl;
+                }
+                return;
+            }
+        }
+        std::cout << "Account not found!" << std::endl;
+    }
+
+    void transfer(const std::string& fromAccNum, const std::string& toAccNum, double amount) {
+        Account* fromAccount = nullptr;
+        Account* toAccount = nullptr;
+
+        for (auto& account : accounts) {
+            if (account.accountNumber == fromAccNum) {
+                fromAccount = &account;
+            }
+            if (account.accountNumber == toAccNum) {
+                toAccount = &account;
+            }
+        }
+
+        if (fromAccount && toAccount) {
+            if (fromAccount->balance >= amount) {
+                fromAccount->balance -= amount;
+                toAccount->balance += amount;
+                std::cout << "Transferred $" << amount << " from account " << fromAccNum << " to " << toAccNum << std::endl;
+            } else {
+                std::cout << " Insufficient funds!" << std::endl;
+            }
+        } else {
+            std::cout << "One or both accounts not found!" << std::endl;
+        }
+    }
+
+    void viewAccount(const std::string& accNum) {
+        for (const auto& account : accounts) {
+            if (account.accountNumber == accNum) {
+                std::cout << "Account Number: " << account.accountNumber << std::endl;
+                std::cout << "Account Holder: " << account.accountHolder << std::endl;
+                std::cout << "Balance: $" << account.balance << std::endl;
+                return;
+            }
+        }
+        std::cout << "Account not found!" << std::endl;
+    }
+
+    void deleteAccount(const std::string& accNum) {
+        for (auto it = accounts.begin(); it != accounts.end(); ++it) {
+            if (it->accountNumber == accNum) {
+                accounts.erase(it);
+                std::cout << "Account " << accNum << " deleted successfully." << std::endl;
+                return;
+            }
+        }
+        std::cout << "Account not found!" << std::endl;
+    }
+};
+
+int main() {
+    Bank bank;
+    int choice;
+    std::string accNum, accHolder, fromAccNum, toAccNum;
+    double amount;
+
+    while (true) {
+        std::cout << "\nBank Management System\n";
+        std::cout << "1. Create Account\n";
+        std::cout << "2. Deposit\n";
+        std::cout << "3. Withdraw\n";
+        std::cout << "4. Transfer\n";
+        std::cout << "5. View Account\n";
+        std::cout << "6. Delete Account\n";
+        std::cout << "7. Exit\n";
+        std::cout << "Enter your choice: ";
+        std::cin >> choice;
+
+        switch (choice) {
+            case 1:
+                std::cout << "Enter Account Number: ";
+                std::cin >> accNum;
+                std::cout << "Enter Account Holder Name: ";
+                std::cin.ignore(); // Clear the newline character from the input buffer
+                std::getline(std::cin, accHolder);
+                std::cout << "Enter Initial Balance: ";
+                std::cin >> amount;
+                bank.createAccount(accNum, accHolder, amount);
+                break;
+            case 2:
+                std::cout << "Enter Account Number: ";
+                std::cin >> accNum;
+                std::cout << "Enter Amount to Deposit: ";
+                std::cin >> amount;
+                bank.deposit(accNum, amount);
+                break;
+            case 3:
+                std::cout << "Enter Account Number: ";
+                std::cin >> accNum;
+                std::cout << "Enter Amount to Withdraw: ";
+                std::cin >> amount;
+                bank.withdraw(accNum, amount);
+                break;
+            case 4:
+                std::cout << "Enter From Account Number: ";
+                std::cin >> fromAccNum;
+                std::cout << "Enter To Account Number: ";
+                std::cin >> toAccNum;
+                std::cout << "Enter Amount to Transfer: ";
+                std::cin >> amount;
+                bank.transfer(fromAccNum, toAccNum, amount);
+                break;
+            case 5:
+                std::cout << "Enter Account Number: ";
+                std::cin >> accNum;
+                bank.viewAccount(accNum);
+                break;
+            case 6:
+                std::cout << "Enter Account Number: ";
+                std::cin >> accNum;
+                bank.deleteAccount(accNum);
+                break;
+            case 7:
+                std::cout << "Exiting the system." << std::endl;
+                return 0;
+            default:
+                std::cout << "Invalid choice! Please try again." << std::endl;
+        }
+    }
+    return 0;
+}
